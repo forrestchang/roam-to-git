@@ -10,7 +10,10 @@ import psutil
 from loguru import logger
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
+from selenium.common.exceptions import (
+    NoSuchElementException,
+    StaleElementReferenceException,
+)
 
 ROAM_FORMATS = ("json", "markdown", "edn")
 
@@ -26,10 +29,15 @@ class Browser:
             firefox_profile = webdriver.FirefoxProfile()
 
             firefox_profile.set_preference("browser.download.folderList", 2)
-            firefox_profile.set_preference("browser.download.manager.showWhenStarting", False)
-            firefox_profile.set_preference("browser.download.dir", str(output_directory))
             firefox_profile.set_preference(
-                "browser.helperApps.neverAsk.saveToDisk", "application/zip")
+                "browser.download.manager.showWhenStarting", False
+            )
+            firefox_profile.set_preference(
+                "browser.download.dir", str(output_directory)
+            )
+            firefox_profile.set_preference(
+                "browser.helperApps.neverAsk.saveToDisk", "application/zip"
+            )
 
             logger.trace("Configure Firefox Profile Options")
             firefox_options = webdriver.FirefoxOptions()
@@ -38,9 +46,11 @@ class Browser:
                 firefox_options.headless = True
 
             logger.trace("Start Firefox")
-            self.browser = webdriver.Firefox(firefox_profile=firefox_profile,
-                                             firefox_options=firefox_options,
-                                             service_log_path=os.devnull)
+            self.browser = webdriver.Firefox(
+                firefox_profile=firefox_profile,
+                firefox_options=firefox_options,
+                service_log_path=os.devnull,
+            )
         elif browser == Browser.PHANTOMJS:
             raise NotImplementedError()
             # TODO configure
@@ -80,8 +90,9 @@ class Browser:
                 pdb.set_trace()
             elements_str = [e.text for e in elements]
             raise ValueError(
-                f"Got {len(elements)} elements, expected 1 for {text}: {elements_str}")
-        element, = elements
+                f"Got {len(elements)} elements, expected 1 for {text}: {elements_str}"
+            )
+        (element,) = elements
         return HTMLElement(element, debug=self.debug)
 
     def close(self):
@@ -89,7 +100,9 @@ class Browser:
 
 
 class HTMLElement:
-    def __init__(self, html_element: webdriver.remote.webelement.WebElement, debug=False):
+    def __init__(
+        self, html_element: webdriver.remote.webelement.WebElement, debug=False
+    ):
         self.html_element = html_element
         self.debug = debug
 
@@ -117,13 +130,15 @@ class HTMLElement:
 
 
 class Config:
-    def __init__(self,
-                 browser: str,
-                 database: Optional[str],
-                 debug: bool,
-                 gui: bool,
-                 sleep_duration: float = 2.,
-                 browser_args: Optional[List[str]] = None):
+    def __init__(
+        self,
+        browser: str,
+        database: Optional[str],
+        debug: bool,
+        gui: bool,
+        sleep_duration: float = 2.0,
+        browser_args: Optional[List[str]] = None,
+    ):
         self.user = os.environ["ROAMRESEARCH_USER"]
         self.password = os.environ["ROAMRESEARCH_PASSWORD"]
         assert self.user
@@ -137,19 +152,22 @@ class Config:
         self.gui = gui
         self.sleep_duration = sleep_duration
         self.browser = getattr(Browser, browser.upper())
-        self.browser_args = (browser_args or [])
+        self.browser_args = browser_args or []
 
 
-def download_rr_archive(output_type: str,
-                        output_directory: Path,
-                        config: Config,
-                        slow_motion=10,
-                        ):
+def download_rr_archive(
+    output_type: str,
+    output_directory: Path,
+    config: Config,
+    slow_motion=10,
+):
     logger.debug("Creating browser")
-    browser = Browser(browser=config.browser,
-                      headless=not config.gui,
-                      debug=config.debug,
-                      output_directory=output_directory)
+    browser = Browser(
+        browser=config.browser,
+        headless=not config.gui,
+        debug=config.debug,
+        output_directory=output_directory,
+    )
 
     if config.debug:
         pass
@@ -166,11 +184,12 @@ def download_rr_archive(output_type: str,
         logger.debug("Closed browser {}", output_type)
 
 
-def _download_rr_archive(browser: Browser,
-                         output_type: str,
-                         output_directory: Path,
-                         config: Config,
-                         ):
+def _download_rr_archive(
+    browser: Browser,
+    output_type: str,
+    output_directory: Path,
+    config: Config,
+):
     """Download an archive in RoamResearch.
 
     :param output_type: Download JSON or Markdown or EDN
@@ -187,7 +206,9 @@ def _download_rr_archive(browser: Browser,
         # Starting is a little bit slow, so we wait for the button that signal it's ok
         time.sleep(config.sleep_duration)
         try:
-            dot_button = browser.find_element_by_css_selector(".bp3-icon-more", check=False)
+            dot_button = browser.find_element_by_css_selector(
+                ".bp3-icon-more", check=False
+            )
             break
         except NoSuchElementException:
             pass
@@ -201,11 +222,14 @@ def _download_rr_archive(browser: Browser,
         if "database's you are an admin of" == strong.text.lower():
             logger.error(
                 "You seems to have multiple databases. Please select it with the option "
-                "--database")
+                "--database"
+            )
             sys.exit(1)
 
-    assert dot_button is not None, "All roads leads to Roam, but that one is too long. Try " \
-                                   "again when Roam servers are faster."
+    assert dot_button is not None, (
+        "All roads leads to Roam, but that one is too long. Try "
+        "again when Roam servers are faster."
+    )
 
     # Click on something empty to remove the eventual popup
     # "Sync Quick Capture Notes with Workspace"
@@ -219,7 +243,9 @@ def _download_rr_archive(browser: Browser,
     time.sleep(config.sleep_duration)
 
     # Configure download type
-    dropdown_button = browser.find_element_by_css_selector(".bp3-dialog .bp3-button-text")
+    dropdown_button = browser.find_element_by_css_selector(
+        ".bp3-dialog .bp3-button-text"
+    )
     if output_type.lower() != dropdown_button.text.lower():
         logger.debug("Changing output type to {}", output_type)
         dropdown_button.click()
@@ -227,7 +253,10 @@ def _download_rr_archive(browser: Browser,
         output_type_elem.click()
 
     # defensive check
-    assert dropdown_button.text.lower() == output_type.lower(), (dropdown_button.text, output_type)
+    assert dropdown_button.text.lower() == output_type.lower(), (
+        dropdown_button.text,
+        output_type,
+    )
 
     # Click on "Export All"
     export_all_confirm = browser.find_element_by_css_selector(".bp3-intent-primary")
@@ -244,18 +273,22 @@ def _download_rr_archive(browser: Browser,
                 time.sleep(1)
                 return
     logger.debug("Waiting too long {}")
-    raise FileNotFoundError("Impossible to download {} in {}", output_type, output_directory)
+    raise FileNotFoundError(
+        "Impossible to download {} in {}", output_type, output_directory
+    )
 
 
-def signin(browser: Browser, config: Config, sleep_duration=1.):
+def signin(browser: Browser, config: Config, sleep_duration=1.0):
     """Sign-in into Roam"""
     logger.debug("Opening signin page")
-    browser.get('https://roamresearch.com/#/signin')
+    browser.get("https://roamresearch.com/#/signin")
 
     logger.debug("Waiting for  email and passwork fields", config.user)
     while True:
         try:
-            email_elem = browser.find_element_by_css_selector("input[name='email']", check=False)
+            email_elem = browser.find_element_by_css_selector(
+                "input[name='email']", check=False
+            )
             passwd_elem = browser.find_element_by_css_selector("input[name='password']")
 
             logger.debug("Fill email '{}'", config.user)
@@ -266,8 +299,10 @@ def signin(browser: Browser, config: Config, sleep_duration=1.):
 
             logger.debug("Defensive check: verify that the user input field is correct")
             time.sleep(sleep_duration)
-            email_elem = browser.find_element_by_css_selector("input[name='email']", check=False)
-            if email_elem.html_element.get_attribute('value') != config.user:
+            email_elem = browser.find_element_by_css_selector(
+                "input[name='email']", check=False
+            )
+            if email_elem.html_element.get_attribute("value") != config.user:
                 continue
 
             logger.debug("Activating sign-in")
@@ -277,13 +312,15 @@ def signin(browser: Browser, config: Config, sleep_duration=1.):
             logger.trace("NoSuchElementException: Retry getting the email field")
             time.sleep(1)
         except StaleElementReferenceException:
-            logger.trace("StaleElementReferenceException: Retry getting the email field")
+            logger.trace(
+                "StaleElementReferenceException: Retry getting the email field"
+            )
             time.sleep(1)
 
 
 def go_to_database(browser, database):
     """Go to the database page"""
-    url = f'https://roamresearch.com/#/app/{database}'
+    url = f"https://roamresearch.com/#/app/{database}"
     logger.debug(f"Load database from url '{url}'")
     browser.get(url)
 
@@ -300,8 +337,10 @@ def _kill_child_process(timeout=50):
             pass
     gone, still_alive = psutil.wait_procs(procs, timeout=timeout)
     if still_alive:
-        logger.warning(f"Kill child process {still_alive} that was still alive after "
-                       f"'timeout={timeout}' from 'terminate()' command")
+        logger.warning(
+            f"Kill child process {still_alive} that was still alive after "
+            f"'timeout={timeout}' from 'terminate()' command"
+        )
         for p in still_alive:
             try:
                 p.kill()

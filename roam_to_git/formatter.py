@@ -17,7 +17,7 @@ def read_markdown_directory(raw_directory: Path) -> Dict[str, str]:
         if not file.is_file():
             continue
         content = file.read_text(encoding="utf-8")
-        parts = file.parts[len(raw_directory.parts):]
+        parts = file.parts[len(raw_directory.parts) :]
         file_name = os.path.join(*parts)
         contents[file_name] = content
     return contents
@@ -25,7 +25,9 @@ def read_markdown_directory(raw_directory: Path) -> Dict[str, str]:
 
 def get_back_links(contents: Dict[str, str]) -> Dict[str, List[Tuple[str, Match]]]:
     # Extract backlinks from the markdown
-    forward_links = {file_name: extract_links(content) for file_name, content in contents.items()}
+    forward_links = {
+        file_name: extract_links(content) for file_name, content in contents.items()
+    }
     back_links: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
     for file_name, links in forward_links.items():
         for link in links:
@@ -59,21 +61,26 @@ def format_to_do(contents: str):
 
 
 def extract_links(string: str) -> List[Match]:
-    out = list(re.finditer(r"\[\["
-                           r"([^\]\n]+)"
-                           r"\]\]", string))
+    out = list(re.finditer(r"\[\[" r"([^\]\n]+)" r"\]\]", string))
     # Match attributes
-    out.extend(re.finditer(r"(?:^|\n) *- "
-                           r"((?:[^:\n]|:[^:\n])+)"  # Match everything except ::
-                           r"::", string))
+    out.extend(
+        re.finditer(
+            r"(?:^|\n) *- "
+            r"((?:[^:\n]|:[^:\n])+)"  # Match everything except ::
+            r"::",
+            string,
+        )
+    )
     return out
 
 
 def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
     if not back_links:
         return content
-    files = sorted(set((file_name[:-3], match) for file_name, match in back_links),
-                   key=lambda e: (e[0], e[1].start()))
+    files = sorted(
+        set((file_name[:-3], match) for file_name, match in back_links),
+        key=lambda e: (e[0], e[1].start()),
+    )
     new_lines = []
     file_before = None
     for file, match in files:
@@ -81,15 +88,18 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
             new_lines.append(f"## [{file}](<{file}.md>)")
         file_before = file
 
-        start_context_ = list(takewhile(lambda c: c != "\n", match.string[:match.start()][::-1]))
+        start_context_ = list(
+            takewhile(lambda c: c != "\n", match.string[: match.start()][::-1])
+        )
         start_context = "".join(start_context_[::-1])
 
-        middle_context = match.string[match.start():match.end()]
+        middle_context = match.string[match.start() : match.end()]
 
-        end_context_ = takewhile(lambda c: c != "\n", match.string[match.end()])
+        end_context_ = takewhile(lambda c: c != "\n", match.string[match.end() :])
         end_context = "".join(end_context_)
 
         context = (start_context + middle_context + end_context).strip()
+
         new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
     return f"{content}\n# Backlinks\n{backlinks_str}\n"
@@ -104,22 +114,27 @@ def format_link(string: str, link_prefix="") -> str:
     # Regex are read-only and can't parse [[[[recursive]] [[links]]]], but they do the job.
     # We use a special syntax for links that can have SPACES in them
     # Format internal reference: [[mynote]]
-    string = re.sub(r"\[\["  # We start with [[
-                    # TODO: manage a single ] in the tag
-                    r"([^\]\n]+)"  # Everything except ]
-                    r"\]\]",
-                    rf"[\1](<{link_prefix}\1.md>)",
-                    string, flags=re.MULTILINE)
+    string = re.sub(
+        r"\[\["  # We start with [[
+        # TODO: manage a single ] in the tag
+        r"([^\]\n]+)" r"\]\]",  # Everything except ]
+        rf"[\1](<{link_prefix}\1.md>)",
+        string,
+        flags=re.MULTILINE,
+    )
 
     # Format hashtags: #mytag
-    string = re.sub(r"#([a-zA-Z-_0-9]+)",
-                    rf"[\1](<{link_prefix}\1.md>)",
-                    string, flags=re.MULTILINE)
+    string = re.sub(
+        r"#([a-zA-Z-_0-9]+)", rf"[\1](<{link_prefix}\1.md>)", string, flags=re.MULTILINE
+    )
 
     # Format attributes
-    string = re.sub(r"(^ *- )"  # Match the beginning, like '  - '
-                    r"(([^:\n]|:[^:\n])+)"  # Match everything except ::
-                    r"::",
-                    rf"\1**[\2](<{link_prefix}\2.md>):**",  # Format Markdown link
-                    string, flags=re.MULTILINE)
+    string = re.sub(
+        r"(^ *- )"  # Match the beginning, like '  - '
+        r"(([^:\n]|:[^:\n])+)"  # Match everything except ::
+        r"::",
+        rf"\1**[\2](<{link_prefix}\2.md>):**",  # Format Markdown link
+        string,
+        flags=re.MULTILINE,
+    )
     return string

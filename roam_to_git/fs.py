@@ -19,7 +19,7 @@ def get_zip_path(zip_dir_path: Path) -> Path:
     zip_files = list(zip_dir_path.iterdir())
     zip_files = [f for f in zip_files if f.name.endswith(".zip")]
     assert len(zip_files) == 1, (zip_files, zip_dir_path)
-    zip_path, = zip_files
+    (zip_path,) = zip_files
     return zip_path
 
 
@@ -46,9 +46,11 @@ def unzip_archive(zip_dir_path: Path):
     logger.debug("Unzipping {}", zip_dir_path)
     zip_path = get_zip_path(zip_dir_path)
     with zipfile.ZipFile(zip_path) as zip_file:
-        contents = {file.filename: zip_file.read(file.filename).decode()
-                    for file in zip_file.infolist()
-                    if not file.is_dir()}
+        contents = {
+            file.filename: zip_file.read(file.filename).decode()
+            for file in zip_file.infolist()
+            if not file.is_dir()
+        }
     return contents
 
 
@@ -56,18 +58,30 @@ def save_files(save_format: str, directory: Path, contents: Dict[str, str]):
     logger.debug("Saving {} to {}", save_format, directory)
     for file_name, content in contents.items():
         dest = get_clean_path(directory, file_name)
-        dest.parent.mkdir(parents=True, exist_ok=True)  # Needed if a new directory is used
+        dest.parent.mkdir(
+            parents=True, exist_ok=True
+        )  # Needed if a new directory is used
         # We have to specify encoding because crontab on Mac don't use UTF-8
         # https://stackoverflow.com/questions/11735363/python3-unicodeencodeerror-crontab
         with dest.open("w", encoding="utf-8") as f:
-            if save_format == 'json':
-                json.dump(json.loads(content), f, sort_keys=True, indent=2, ensure_ascii=True)
+            if save_format == "json":
+                json.dump(
+                    json.loads(content), f, sort_keys=True, indent=2, ensure_ascii=True
+                )
             else:  # markdown, formatted, edn
-                if save_format == 'edn':
+                if save_format == "edn":
                     try:
                         jet = Popen(
-                            ["jet", "--edn-reader-opts", "{:default tagged-literal}", "--pretty"],
-                            stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+                            [
+                                "jet",
+                                "--edn-reader-opts",
+                                "{:default tagged-literal}",
+                                "--pretty",
+                            ],
+                            stdout=PIPE,
+                            stdin=PIPE,
+                            stderr=STDOUT,
+                        )
                         jet_stdout, _ = jet.communicate(input=str.encode(content))
                         content = jet_stdout.decode()
                     except IOError:
@@ -94,7 +108,7 @@ def commit_git_directory(repo: git.Repo):
 
 def push_git_repository(repo: git.Repo):
     logger.debug("Pushing to origin")
-    origin = repo.remote(name='origin')
+    origin = repo.remote(name="origin")
     origin.push()
 
 

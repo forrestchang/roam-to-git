@@ -10,3 +10,9 @@ MANIFEST
 dist/
 *.ipynb
 *.log
+
+edn
+formatted/
+markdown/
+json/
+edn/
