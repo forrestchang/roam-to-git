@@ -112,6 +112,18 @@ class TestBacklinks(unittest.TestCase):
             target,
         )
 
+    def test_two_child_levels(self):
+        contents = {
+            "Source.md": "- Parent [[Target]]\n  - Child\n    - Grandchild\n      - Great grandchild\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn(
+            "- Parent [Target](<Target.md>)\n  - Child\n    - Grandchild",
+            target,
+        )
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]

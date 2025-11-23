@@ -107,6 +107,7 @@ def _extract_line_with_children(text: str, start: int, end: int) -> str:
     child_lines: List[str] = []
     pos = line_end + 1
     first_child_indent = None
+    second_child_indent = None
 
     while pos < len(text):
         next_end = text.find("\n", pos)
@@ -126,8 +127,13 @@ def _extract_line_with_children(text: str, start: int, end: int) -> str:
 
         if first_child_indent is None:
             first_child_indent = indent
+        elif indent < first_child_indent:
+            break
 
-        if indent > first_child_indent:
+        if indent > first_child_indent and second_child_indent is None:
+            second_child_indent = indent
+
+        if second_child_indent is not None and indent > second_child_indent:
             break
 
         child_lines.append(line)
