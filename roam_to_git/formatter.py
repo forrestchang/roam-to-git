@@ -34,13 +34,14 @@ def format_markdown(contents: Dict[str, str]) -> Dict[str, str]:
         file_name: extract_links(content) for file_name, content in contents.items()
     }
     back_links = _build_back_links(forward_links)
+    unlinked_links = _build_unlinked_links(contents, forward_links)
     # Format and write the markdown files
     out = {}
     for file_name, content in contents.items():
         # We add the backlinks first, because they use the position of the characters
         # of the regex matches
         content = add_back_links(content, back_links[file_name])
-        content = add_forward_links(content, forward_links[file_name])
+        content = add_unlinked_links(content, unlinked_links[file_name])
 
         # Format content. Backlinks content will be formatted automatically.
         content = format_to_do(content)
@@ -66,6 +67,22 @@ def _build_back_links(
         for link in links:
             back_links[f"{link.group(1)}.md"].append((file_name, link))
     return back_links
+
+
+def _build_unlinked_links(
+    contents: Dict[str, str], forward_links: Dict[str, List[Match]]
+) -> Dict[str, List[Tuple[str, Match]]]:
+    """Find plain-text mentions of pages that are not already linked."""
+    unlinked: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
+    page_names = [(file_name, file_name[:-3]) for file_name in contents.keys()]
+    for source_file, content in contents.items():
+        spans = _link_spans(forward_links[source_file])
+        for target_file, target_name in page_names:
+            if target_file == source_file:
+                continue
+            for match in _find_mentions_outside_links(content, target_name, spans):
+                unlinked[target_file].append((source_file, match))
+    return unlinked
 
 
 def extract_links(string: str) -> List[Match]:
@@ -103,11 +120,11 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
     return f"{content}\n# Backlinks\n{backlinks_str}\n"
 
 
-def add_forward_links(content: str, forward_links: List[Match]) -> str:
-    if not forward_links:
+def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, Match]]) -> str:
+    if not unlinked_links:
         return content
     files = sorted(
-        set((match.group(1), match) for match in forward_links),
+        set((file_name[:-3], match) for file_name, match in unlinked_links),
         key=lambda e: (e[0], e[1].start()),
     )
     new_lines: List[str] = []
@@ -121,7 +138,7 @@ def add_forward_links(content: str, forward_links: List[Match]) -> str:
 
         new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
-    return f"{content}\n# Unbacklinks\n{backlinks_str}\n"
+    return f"{content}\n# Unlinked references\n{backlinks_str}\n"
 
 
 def _extract_line_with_children(text: str, start: int, end: int) -> str:
@@ -184,6 +201,33 @@ def _strip_leading_spaces(line: str, count: int) -> str:
     leading = len(line) - len(line.lstrip(" "))
     to_remove = min(leading, count)
     return line[to_remove:]
+
+
+def _link_spans(matches: List[Match]) -> List[Tuple[int, int]]:
+    return sorted([(m.start(), m.end()) for m in matches], key=lambda s: s[0])
+
+
+def _find_mentions_outside_links(
+    text: str, term: str, link_spans: List[Tuple[int, int]]
+) -> List[Match]:
+    """Find plain-text mentions of term that are not inside [[link]] spans."""
+    if not term:
+        return []
+
+    def inside(pos: int) -> bool:
+        for start, end in link_spans:
+            if start <= pos < end:
+                return True
+            if start > pos:
+                break
+        return False
+
+    matches: List[Match] = []
+    for match in re.finditer(re.escape(term), text):
+        if inside(match.start()):
+            continue
+        matches.append(match)
+    return matches
 
 
 def format_link(string: str, link_prefix="") -> str:

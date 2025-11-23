@@ -138,27 +138,33 @@ class TestBacklinks(unittest.TestCase):
 
 
 class TestUnbacklinks(unittest.TestCase):
-    def test_unbacklinks_with_children(self):
+    def test_plain_text_mentions(self):
         contents = {
-            "Source.md": "- Parent [[Target]]\n  - Child\n    - Grandchild\n",
+            "Source.md": "- Mention Target\n  - Child\n",
             "Target.md": "Content",
         }
         formatted = format_markdown(contents)
-        source = formatted["Source.md"]
-        self.assertIn("# Unbacklinks", source)
-        self.assertIn(
-            "- Parent [Target](<Target.md>)\n  - Child\n    - Grandchild",
-            source,
-        )
+        target = formatted["Target.md"]
+        self.assertIn("# Unlinked references", target)
+        self.assertIn("- Mention Target\n  - Child", target)
 
-    def test_unbacklinks_dedent(self):
+    def test_ignores_existing_links(self):
         contents = {
-            "Source.md": "    - Deep [[Target]]\n      - Child\n",
+            "Source.md": "- Parent [[Target]]\n  - Child\n",
             "Target.md": "Content",
         }
         formatted = format_markdown(contents)
-        source = formatted["Source.md"]
-        self.assertIn("- Deep [Target](<Target.md>)\n  - Child", source)
+        target = formatted["Target.md"]
+        self.assertNotIn("# Unlinked references", target)
+
+    def test_dedent_unlinked_block(self):
+        contents = {
+            "Source.md": "    - Deep Target mention\n      - Child\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn("- Deep Target mention\n  - Child", target)
 
 
 def _extract_links(string) -> List[str]:
