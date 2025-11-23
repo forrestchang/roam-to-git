@@ -133,7 +133,7 @@ def _extract_line_with_children(text: str, start: int, end: int) -> str:
         child_lines.append(line)
         pos = next_end + 1
 
-    block = "\n".join([current_line, *child_lines]).strip()
+    block = "\n".join([current_line, *child_lines]).rstrip("\n")
     return block
 
 

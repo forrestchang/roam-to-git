@@ -100,6 +100,18 @@ class TestBacklinks(unittest.TestCase):
             target,
         )
 
+    def test_nested_indent_preserved(self):
+        contents = {
+            "Source.md": "  - Nested [[Target]]\n    - Child\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn(
+            "  - Nested [Target](<Target.md>)\n    - Child",
+            target,
+        )
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]
