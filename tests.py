@@ -166,6 +166,16 @@ class TestUnbacklinks(unittest.TestCase):
         target = formatted["Target.md"]
         self.assertIn("- Deep Target mention\n  - Child", target)
 
+    def test_hashtag_not_unlinked_and_as_backlink(self):
+        contents = {
+            "Source.md": "- Using #Target\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertNotIn("# Unlinked references", target)
+        self.assertIn("- Using #Target", target)
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]
@@ -187,10 +197,10 @@ class TestExtractLinks(unittest.TestCase):
         self.assertEqual(_extract_links("[[link]] [[other]]"), ["link", "other"])
 
     def test_one_hashtag(self):
-        self.assertEqual(_extract_links("string [[link]]."), ["link"])
+        self.assertEqual(_extract_links("string #link."), ["link"])
 
     def test_two_hashtag(self):
-        self.assertEqual(_extract_links("[[link]] [[other]]"), ["link", "other"])
+        self.assertEqual(_extract_links("#link #other"), ["link", "other"])
 
     def test_no_attribute(self):
         self.assertEqual(_extract_links("  - string: link"), [])

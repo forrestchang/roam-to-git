@@ -87,6 +87,8 @@ def _build_unlinked_links(
 
 def extract_links(string: str) -> List[Match]:
     out = list(re.finditer(r"\[\[" r"([^\]\n]+)" r"\]\]", string))
+    # Match hashtags as links
+    out.extend(re.finditer(r"#([a-zA-Z-_0-9]+)", string))
     # Match attributes
     out.extend(
         re.finditer(
