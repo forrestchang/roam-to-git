@@ -130,7 +130,7 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
 
         new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
-    return f"{content}\n# Backlinks\n{backlinks_str}\n"
+    return f"{content}\n# Backlinks ({len(back_links)})\n{backlinks_str}\n"
 
 
 def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]]) -> str:
@@ -158,7 +158,7 @@ def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]
             )
             new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
-    return f"{content}\n# Unlinked references\n{backlinks_str}\n"
+    return f"{content}\n# Unlinked references ({len(unlinked_links)})\n{backlinks_str}\n"
 
 
 def _extract_line_with_children(text: str, start: int, end: int) -> str:

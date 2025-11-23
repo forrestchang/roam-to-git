@@ -95,6 +95,7 @@ class TestBacklinks(unittest.TestCase):
         }
         formatted = format_markdown(contents)
         target = formatted["Target.md"]
+        self.assertIn("# Backlinks (1)", target)
         self.assertIn(
             "- Parent [Target](<Target.md>)\n  - Child context",
             target,
@@ -145,7 +146,7 @@ class TestUnbacklinks(unittest.TestCase):
         }
         formatted = format_markdown(contents)
         target = formatted["Target.md"]
-        self.assertIn("# Unlinked references", target)
+        self.assertIn("# Unlinked references (1)", target)
         self.assertIn("- Mention Target\n  - Child", target)
 
     def test_ignores_existing_links(self):
@@ -192,7 +193,7 @@ class TestUnbacklinks(unittest.TestCase):
         }
         formatted = format_markdown(contents)
         target = formatted["Self-discipline.md"]
-        self.assertIn("# Unlinked references", target)
+        self.assertIn("# Unlinked references (1)", target)
         self.assertIn("- Mentions Discipline", target)
 
     def test_grouped_by_term(self):
@@ -203,6 +204,7 @@ class TestUnbacklinks(unittest.TestCase):
         }
         formatted = format_markdown(contents)
         target = formatted["Target.md"]
+        self.assertIn("# Unlinked references (2)", target)
         self.assertIn("## Alpha", target)
         self.assertIn("## Beta", target)
         self.assertIn("### [S1](<S1.md>)", target)
