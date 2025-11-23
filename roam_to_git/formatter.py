@@ -77,10 +77,13 @@ def _build_unlinked_links(
     page_names = [(file_name, file_name[:-3]) for file_name in contents.keys()]
     for source_file, content in contents.items():
         spans = _link_spans(forward_links[source_file])
+        url_spans = _url_spans(content)
         for target_file, target_name in page_names:
             if target_file == source_file:
                 continue
-            for match in _find_mentions_outside_links(content, target_name, spans):
+            for match in _find_mentions_outside_links(
+                content, target_name, spans, url_spans
+            ):
                 unlinked[target_file].append((source_file, match))
     return unlinked
 
@@ -210,7 +213,10 @@ def _link_spans(matches: List[Match]) -> List[Tuple[int, int]]:
 
 
 def _find_mentions_outside_links(
-    text: str, term: str, link_spans: List[Tuple[int, int]]
+    text: str,
+    term: str,
+    link_spans: List[Tuple[int, int]],
+    url_spans: List[Tuple[int, int]],
 ) -> List[Match]:
     """Find plain-text mentions of term that are not inside [[link]] spans."""
     if not term:
@@ -224,12 +230,24 @@ def _find_mentions_outside_links(
                 break
         return False
 
+    def inside_url(pos: int) -> bool:
+        for start, end in url_spans:
+            if start <= pos < end:
+                return True
+            if start > pos:
+                break
+        return False
+
     matches: List[Match] = []
     for match in re.finditer(re.escape(term), text):
-        if inside(match.start()):
+        if inside(match.start()) or inside_url(match.start()):
             continue
         matches.append(match)
     return matches
+
+
+def _url_spans(text: str) -> List[Tuple[int, int]]:
+    return [(m.start(), m.end()) for m in re.finditer(r"https?://\S+", text)]
 
 
 def format_link(string: str, link_prefix="") -> str:

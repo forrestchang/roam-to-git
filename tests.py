@@ -176,6 +176,15 @@ class TestUnbacklinks(unittest.TestCase):
         self.assertNotIn("# Unlinked references", target)
         self.assertIn("- Using #Target", target)
 
+    def test_mentions_inside_urls_are_ignored(self):
+        contents = {
+            "Source.md": "- Link https://example.com/path/Target-image.jpg\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertNotIn("# Unlinked references", target)
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]
