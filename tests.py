@@ -137,6 +137,30 @@ class TestBacklinks(unittest.TestCase):
         )
 
 
+class TestUnbacklinks(unittest.TestCase):
+    def test_unbacklinks_with_children(self):
+        contents = {
+            "Source.md": "- Parent [[Target]]\n  - Child\n    - Grandchild\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        source = formatted["Source.md"]
+        self.assertIn("# Unbacklinks", source)
+        self.assertIn(
+            "- Parent [Target](<Target.md>)\n  - Child\n    - Grandchild",
+            source,
+        )
+
+    def test_unbacklinks_dedent(self):
+        contents = {
+            "Source.md": "    - Deep [[Target]]\n      - Child\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        source = formatted["Source.md"]
+        self.assertIn("- Deep [Target](<Target.md>)\n  - Child", source)
+
+
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]
 

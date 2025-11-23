@@ -23,25 +23,24 @@ def read_markdown_directory(raw_directory: Path) -> Dict[str, str]:
 
 
 def get_back_links(contents: Dict[str, str]) -> Dict[str, List[Tuple[str, Match]]]:
-    # Extract backlinks from the markdown
     forward_links = {
         file_name: extract_links(content) for file_name, content in contents.items()
     }
-    back_links: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
-    for file_name, links in forward_links.items():
-        for link in links:
-            back_links[f"{link.group(1)}.md"].append((file_name, link))
-    return back_links
+    return _build_back_links(forward_links)
 
 
 def format_markdown(contents: Dict[str, str]) -> Dict[str, str]:
-    back_links = get_back_links(contents)
+    forward_links = {
+        file_name: extract_links(content) for file_name, content in contents.items()
+    }
+    back_links = _build_back_links(forward_links)
     # Format and write the markdown files
     out = {}
     for file_name, content in contents.items():
         # We add the backlinks first, because they use the position of the characters
         # of the regex matches
         content = add_back_links(content, back_links[file_name])
+        content = add_forward_links(content, forward_links[file_name])
 
         # Format content. Backlinks content will be formatted automatically.
         content = format_to_do(content)
@@ -57,6 +56,16 @@ def format_to_do(contents: str):
     contents = re.sub(r"{{\[\[TODO\]\]}} *", r"[ ] ", contents)
     contents = re.sub(r"{{\[\[DONE\]\]}} *", r"[x] ", contents)
     return contents
+
+
+def _build_back_links(
+    forward_links: Dict[str, List[Match]]
+) -> Dict[str, List[Tuple[str, Match]]]:
+    back_links: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
+    for file_name, links in forward_links.items():
+        for link in links:
+            back_links[f"{link.group(1)}.md"].append((file_name, link))
+    return back_links
 
 
 def extract_links(string: str) -> List[Match]:
@@ -80,7 +89,7 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
         set((file_name[:-3], match) for file_name, match in back_links),
         key=lambda e: (e[0], e[1].start()),
     )
-    new_lines = []
+    new_lines: List[str] = []
     file_before = None
     for file, match in files:
         if file != file_before:
@@ -92,6 +101,27 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
         new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
     return f"{content}\n# Backlinks\n{backlinks_str}\n"
+
+
+def add_forward_links(content: str, forward_links: List[Match]) -> str:
+    if not forward_links:
+        return content
+    files = sorted(
+        set((match.group(1), match) for match in forward_links),
+        key=lambda e: (e[0], e[1].start()),
+    )
+    new_lines: List[str] = []
+    file_before = None
+    for file, match in files:
+        if file != file_before:
+            new_lines.append(f"## [{file}](<{file}.md>)")
+        file_before = file
+
+        context = _extract_line_with_children(match.string, match.start(), match.end())
+
+        new_lines.extend([context, ""])
+    backlinks_str = "\n".join(new_lines)
+    return f"{content}\n# Unbacklinks\n{backlinks_str}\n"
 
 
 def _extract_line_with_children(text: str, start: int, end: int) -> str:
