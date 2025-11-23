@@ -147,28 +147,31 @@ def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]
 
     new_lines: List[str] = []
     display_count = 0
+    global_seen_blocks = set()
     for term in sorted(grouped.keys()):
-        new_lines.append(f"## {term}")
         entries = sorted(
             grouped[term],
             key=lambda e: (e[0], e[1].start()),
         )
         file_before = None
-        seen_blocks = set()
+        term_lines: List[str] = []
         for source_file, match in entries:
             file = source_file[:-3]
             if file != file_before:
-                new_lines.append(f"### [{file}](<{file}.md>)")
+                term_lines.append(f"### [{file}](<{file}.md>)")
             file_before = file
             context = _extract_line_with_children(
                 match.string, match.start(), match.end()
             )
             block_key = (file, context)
-            if block_key in seen_blocks:
+            if block_key in global_seen_blocks:
                 continue
-            seen_blocks.add(block_key)
-            new_lines.extend([context, ""])
+            global_seen_blocks.add(block_key)
+            term_lines.extend([context, ""])
             display_count += 1
+        if term_lines:
+            new_lines.append(f"## {term}")
+            new_lines.extend(term_lines)
     if display_count == 0:
         return content
     backlinks_str = "\n".join(new_lines)
