@@ -185,6 +185,16 @@ class TestUnbacklinks(unittest.TestCase):
         target = formatted["Target.md"]
         self.assertNotIn("# Unlinked references", target)
 
+    def test_aliases_are_tracked(self):
+        contents = {
+            "Source.md": "- Mentions Discipline\n",
+            "Self-discipline.md": "- Aliases:: 自律, Discipline\n",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Self-discipline.md"]
+        self.assertIn("# Unlinked references", target)
+        self.assertIn("- Mentions Discipline", target)
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]

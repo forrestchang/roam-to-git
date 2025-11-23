@@ -74,17 +74,25 @@ def _build_unlinked_links(
 ) -> Dict[str, List[Tuple[str, Match]]]:
     """Find plain-text mentions of pages that are not already linked."""
     unlinked: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
-    page_names = [(file_name, file_name[:-3]) for file_name in contents.keys()]
+    page_names = []
+    aliases: Dict[str, List[str]] = defaultdict(list)
+    for file_name, content in contents.items():
+        name = file_name[:-3]
+        page_names.append((file_name, name))
+        aliases[file_name] = _extract_aliases(content)
+
     for source_file, content in contents.items():
         spans = _link_spans(forward_links[source_file])
         url_spans = _url_spans(content)
         for target_file, target_name in page_names:
             if target_file == source_file:
                 continue
-            for match in _find_mentions_outside_links(
-                content, target_name, spans, url_spans
-            ):
-                unlinked[target_file].append((source_file, match))
+            terms = [target_name] + aliases.get(target_file, [])
+            for term in terms:
+                for match in _find_mentions_outside_links(
+                    content, term, spans, url_spans
+                ):
+                    unlinked[target_file].append((source_file, match))
     return unlinked
 
 
@@ -248,6 +256,18 @@ def _find_mentions_outside_links(
 
 def _url_spans(text: str) -> List[Tuple[int, int]]:
     return [(m.start(), m.end()) for m in re.finditer(r"https?://\S+", text)]
+
+
+def _extract_aliases(content: str) -> List[str]:
+    """Extract comma-separated aliases from an Aliases:: attribute."""
+    matches = re.findall(
+        r"^ *- +Aliases:: *(.+)$", content, flags=re.MULTILINE | re.IGNORECASE
+    )
+    aliases: List[str] = []
+    for match in matches:
+        parts = [a.strip() for a in match.split(",") if a.strip()]
+        aliases.extend(parts)
+    return aliases
 
 
 def format_link(string: str, link_prefix="") -> str:
