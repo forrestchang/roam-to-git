@@ -1,5 +1,6 @@
 import contextlib
 import datetime
+import hashlib
 import json
 import platform
 import tempfile
@@ -112,13 +113,40 @@ def push_git_repository(repo: git.Repo):
     origin.push()
 
 
+MAX_FILENAME_BYTES = 240  # Keep well under typical 255-byte per-path-component limits.
+
+
+def _truncate_filename_bytes(name: str, max_bytes: int = MAX_FILENAME_BYTES) -> str:
+    """Ensure a UTF-8 filename fits within byte limits by truncating with a hash suffix."""
+    encoded = name.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return name
+
+    stem, ext = Path(name).stem, Path(name).suffix
+    digest = hashlib.sha1(encoded).hexdigest()[:8]
+
+    # Reserve space for dash + hash + extension.
+    reserved = len(ext.encode("utf-8")) + 1 + len(digest)
+    budget = max_bytes - reserved
+    if budget <= 0:
+        # Fall back to hash only if extension is excessively long (unlikely).
+        return f"{digest}{ext}"
+
+    truncated_stem = stem.encode("utf-8")[:budget].decode("utf-8", "ignore")
+    return f"{truncated_stem}-{digest}{ext}"
+
+
 def get_clean_path(directory: Path, file_name: str) -> Path:
-    """Remove any special characters on the file name"""
+    """Remove special characters and trim overly long file names to fit filesystem limits."""
     out = directory
     for name in file_name.split("/"):
         if name == "..":
             continue
-        out = out / pathvalidate.sanitize_filename(name, platform=platform.system())
+        safe = pathvalidate.sanitize_filename(
+            name, platform=platform.system(), max_len=None
+        )
+        safe = _truncate_filename_bytes(safe)
+        out = out / safe
     return out
 
 
