@@ -1,7 +1,6 @@
 import os
 import re
 from collections import defaultdict
-from itertools import takewhile
 from pathlib import Path
 from typing import Dict, List, Match, Tuple
 
@@ -88,21 +87,54 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
             new_lines.append(f"## [{file}](<{file}.md>)")
         file_before = file
 
-        start_context_ = list(
-            takewhile(lambda c: c != "\n", match.string[: match.start()][::-1])
-        )
-        start_context = "".join(start_context_[::-1])
-
-        middle_context = match.string[match.start() : match.end()]
-
-        end_context_ = takewhile(lambda c: c != "\n", match.string[match.end() :])
-        end_context = "".join(end_context_)
-
-        context = (start_context + middle_context + end_context).strip()
+        context = _extract_line_with_children(match.string, match.start(), match.end())
 
         new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
     return f"{content}\n# Backlinks\n{backlinks_str}\n"
+
+
+def _extract_line_with_children(text: str, start: int, end: int) -> str:
+    """Return the line containing the match plus one level of children below it."""
+    line_start = text.rfind("\n", 0, start) + 1
+    line_end = text.find("\n", end)
+    if line_end == -1:
+        line_end = len(text)
+
+    current_line = text[line_start:line_end].rstrip()
+    base_indent = len(current_line) - len(current_line.lstrip(" "))
+
+    child_lines: List[str] = []
+    pos = line_end + 1
+    first_child_indent = None
+
+    while pos < len(text):
+        next_end = text.find("\n", pos)
+        if next_end == -1:
+            next_end = len(text)
+        line = text[pos:next_end].rstrip("\n")
+
+        if line.strip() == "":
+            # Preserve blank lines directly under the current block
+            child_lines.append(line)
+            pos = next_end + 1
+            continue
+
+        indent = len(line) - len(line.lstrip(" "))
+        if indent <= base_indent:
+            break
+
+        if first_child_indent is None:
+            first_child_indent = indent
+
+        if indent > first_child_indent:
+            break
+
+        child_lines.append(line)
+        pos = next_end + 1
+
+    block = "\n".join([current_line, *child_lines]).strip()
+    return block
 
 
 def format_link(string: str, link_prefix="") -> str:

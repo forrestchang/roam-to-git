@@ -4,7 +4,12 @@ import unittest
 import mypy.api
 from typing import List
 
-from roam_to_git.formatter import extract_links, format_link, format_to_do
+from roam_to_git.formatter import (
+    extract_links,
+    format_link,
+    format_markdown,
+    format_to_do,
+)
 
 
 class TestFormatTodo(unittest.TestCase):
@@ -79,6 +84,20 @@ class TestFormatLinks(unittest.TestCase):
             format_link("  - attrib:: string\n  " "- attrib:: string"),
             "  - **[attrib](<attrib.md>):** string\n "
             " - **[attrib](<attrib.md>):** string",
+        )
+
+
+class TestBacklinks(unittest.TestCase):
+    def test_child_context_in_backlinks(self):
+        contents = {
+            "Source.md": "- Parent [[Target]]\n  - Child context\n    - Grandchild\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn(
+            "- Parent [Target](<Target.md>)\n  - Child context",
+            target,
         )
 
 
