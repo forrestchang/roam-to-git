@@ -146,6 +146,7 @@ def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]
         grouped[term].append((source_file, match))
 
     new_lines: List[str] = []
+    display_count = 0
     for term in sorted(grouped.keys()):
         new_lines.append(f"## {term}")
         entries = sorted(
@@ -153,6 +154,7 @@ def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]
             key=lambda e: (e[0], e[1].start()),
         )
         file_before = None
+        seen_blocks = set()
         for source_file, match in entries:
             file = source_file[:-3]
             if file != file_before:
@@ -161,9 +163,16 @@ def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]
             context = _extract_line_with_children(
                 match.string, match.start(), match.end()
             )
+            block_key = (file, context)
+            if block_key in seen_blocks:
+                continue
+            seen_blocks.add(block_key)
             new_lines.extend([context, ""])
+            display_count += 1
+    if display_count == 0:
+        return content
     backlinks_str = "\n".join(new_lines)
-    return f"{content}\n# Unlinked references ({len(unlinked_links)})\n{backlinks_str}\n"
+    return f"{content}\n# Unlinked references ({display_count})\n{backlinks_str}\n"
 
 
 def _extract_line_with_children(text: str, start: int, end: int) -> str:
