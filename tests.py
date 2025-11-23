@@ -195,6 +195,19 @@ class TestUnbacklinks(unittest.TestCase):
         self.assertIn("# Unlinked references", target)
         self.assertIn("- Mentions Discipline", target)
 
+    def test_grouped_by_term(self):
+        contents = {
+            "S1.md": "- Mention Alpha\n",
+            "S2.md": "- Mention Beta\n",
+            "Target.md": "- Aliases:: Beta\n",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn("## Alpha", target)
+        self.assertIn("## Beta", target)
+        self.assertIn("### [S1](<S1.md>)", target)
+        self.assertIn("### [S2](<S2.md>)", target)
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]

@@ -71,9 +71,9 @@ def _build_back_links(
 
 def _build_unlinked_links(
     contents: Dict[str, str], forward_links: Dict[str, List[Match]]
-) -> Dict[str, List[Tuple[str, Match]]]:
-    """Find plain-text mentions of pages that are not already linked."""
-    unlinked: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
+) -> Dict[str, List[Tuple[str, str, Match]]]:
+    """Find plain-text mentions of pages (including aliases) that are not already linked."""
+    unlinked: Dict[str, List[Tuple[str, str, Match]]] = defaultdict(list)
     page_names = []
     aliases: Dict[str, List[str]] = defaultdict(list)
     for file_name, content in contents.items():
@@ -92,7 +92,7 @@ def _build_unlinked_links(
                 for match in _find_mentions_outside_links(
                     content, term, spans, url_spans
                 ):
-                    unlinked[target_file].append((source_file, match))
+                    unlinked[target_file].append((source_file, term, match))
     return unlinked
 
 
@@ -133,23 +133,30 @@ def add_back_links(content: str, back_links: List[Tuple[str, Match]]) -> str:
     return f"{content}\n# Backlinks\n{backlinks_str}\n"
 
 
-def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, Match]]) -> str:
+def add_unlinked_links(content: str, unlinked_links: List[Tuple[str, str, Match]]) -> str:
     if not unlinked_links:
         return content
-    files = sorted(
-        set((file_name[:-3], match) for file_name, match in unlinked_links),
-        key=lambda e: (e[0], e[1].start()),
-    )
+    grouped: Dict[str, List[Tuple[str, Match]]] = defaultdict(list)
+    for source_file, term, match in unlinked_links:
+        grouped[term].append((source_file, match))
+
     new_lines: List[str] = []
-    file_before = None
-    for file, match in files:
-        if file != file_before:
-            new_lines.append(f"## [{file}](<{file}.md>)")
-        file_before = file
-
-        context = _extract_line_with_children(match.string, match.start(), match.end())
-
-        new_lines.extend([context, ""])
+    for term in sorted(grouped.keys()):
+        new_lines.append(f"## {term}")
+        entries = sorted(
+            grouped[term],
+            key=lambda e: (e[0], e[1].start()),
+        )
+        file_before = None
+        for source_file, match in entries:
+            file = source_file[:-3]
+            if file != file_before:
+                new_lines.append(f"### [{file}](<{file}.md>)")
+            file_before = file
+            context = _extract_line_with_children(
+                match.string, match.start(), match.end()
+            )
+            new_lines.extend([context, ""])
     backlinks_str = "\n".join(new_lines)
     return f"{content}\n# Unlinked references\n{backlinks_str}\n"
 
