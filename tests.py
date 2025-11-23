@@ -210,6 +210,16 @@ class TestUnbacklinks(unittest.TestCase):
         self.assertIn("### [S1](<S1.md>)", target)
         self.assertIn("### [S2](<S2.md>)", target)
 
+    def test_no_duplicate_unlinked_from_alias_duplicates(self):
+        contents = {
+            "Source.md": "- Mention Target\n",
+            "Target.md": "- Aliases:: Target, Target\n",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn("# Unlinked references (1)", target)
+        self.assertEqual(target.count("## Target"), 1)
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]

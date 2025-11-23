@@ -87,11 +87,16 @@ def _build_unlinked_links(
         for target_file, target_name in page_names:
             if target_file == source_file:
                 continue
-            terms = [target_name] + aliases.get(target_file, [])
+            terms = _unique_terms([target_name] + aliases.get(target_file, []))
+            seen_spans = set()
             for term in terms:
                 for match in _find_mentions_outside_links(
                     content, term, spans, url_spans
                 ):
+                    key = (match.start(), match.end())
+                    if key in seen_spans:
+                        continue
+                    seen_spans.add(key)
                     unlinked[target_file].append((source_file, term, match))
     return unlinked
 
@@ -275,6 +280,17 @@ def _extract_aliases(content: str) -> List[str]:
         parts = [a.strip() for a in match.split(",") if a.strip()]
         aliases.extend(parts)
     return aliases
+
+
+def _unique_terms(terms: List[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for term in terms:
+        if term in seen:
+            continue
+        seen.add(term)
+        out.append(term)
+    return out
 
 
 def format_link(string: str, link_prefix="") -> str:
