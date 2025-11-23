@@ -124,6 +124,18 @@ class TestBacklinks(unittest.TestCase):
             target,
         )
 
+    def test_dedents_base_indent_to_avoid_code_block(self):
+        contents = {
+            "Source.md": "    - Deep [[Target]]\n      - Child\n",
+            "Target.md": "Content",
+        }
+        formatted = format_markdown(contents)
+        target = formatted["Target.md"]
+        self.assertIn(
+            "- Deep [Target](<Target.md>)\n  - Child",
+            target,
+        )
+
 
 def _extract_links(string) -> List[str]:
     return [m.group(1) for m in extract_links(string)]

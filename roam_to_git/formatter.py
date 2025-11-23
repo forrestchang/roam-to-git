@@ -139,8 +139,21 @@ def _extract_line_with_children(text: str, start: int, end: int) -> str:
         child_lines.append(line)
         pos = next_end + 1
 
-    block = "\n".join([current_line, *child_lines]).rstrip("\n")
+    lines = [current_line, *child_lines]
+    if base_indent > 0:
+        lines = [_strip_leading_spaces(l, base_indent) for l in lines]
+
+    block = "\n".join(lines).rstrip("\n")
     return block
+
+
+def _strip_leading_spaces(line: str, count: int) -> str:
+    """Strip up to `count` leading spaces, preserving relative indentation."""
+    if line.strip() == "":
+        return line
+    leading = len(line) - len(line.lstrip(" "))
+    to_remove = min(leading, count)
+    return line[to_remove:]
 
 
 def format_link(string: str, link_prefix="") -> str:
