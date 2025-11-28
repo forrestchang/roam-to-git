@@ -236,7 +236,17 @@ def _download_rr_archive(
     dot_button.click()
 
     logger.debug("Launch download popup")
-    export_all = browser.find_element_by_link_text("Export All")
+    export_all = None
+    last_err = None
+    for _ in range(20):
+        try:
+            export_all = browser.find_element_by_link_text("Export All")
+            break
+        except ValueError as err:
+            last_err = err
+            time.sleep(config.sleep_duration)
+    if export_all is None:
+        raise last_err if last_err else ValueError("Export All link not found")
     export_all.click()
     time.sleep(config.sleep_duration)
 
